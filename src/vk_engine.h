@@ -170,6 +170,8 @@ public:
 
 	//default array of renderable objects
 	std::vector<RenderObject> _renderables;
+	size_t _numObj = 0;
+	size_t _numTriangles = 0;
 
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
@@ -197,6 +199,7 @@ private:
 	//camera position
 	float x=0.f, y=-0.15f, z=-1.5f;
 	bool wireframe = false;
+	double frameTimeAcc = 0.0;
 
 	void init_vulkan();
 	void init_swapchain();
@@ -208,6 +211,7 @@ private:
 	void init_scene();
 	void init_descriptors();
 	void init_imgui();
+	inline void set_up_imgui_info(unsigned frameTime, unsigned lastTime);
 	void load_meshes();
 	bool load_shader_module(const char* filePath, VkShaderModule* outShaderModule);
 	void upload_mesh(Mesh& mesh);

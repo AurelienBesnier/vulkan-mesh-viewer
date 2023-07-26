@@ -202,7 +202,14 @@ void VulkanEngine::run() {
   bool bQuit = false;
 
   // main loop
+
+  unsigned newtime = 0;
+  unsigned oldtime = 0;
+  unsigned frameTime = 0;
   while (!bQuit) {
+
+    oldtime = newtime;
+    newtime = SDL_GetTicks64();
     // Handle events on queue
     while (SDL_PollEvent(&e) != 0) {
       ImGui_ImplSDL2_ProcessEvent(&e);
@@ -249,15 +256,8 @@ void VulkanEngine::run() {
         }
       }
     }
-     //imgui new frame
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL2_NewFrame(_window);
-
-    ImGui::NewFrame();
-
-    //imgui commands
-    ImGui::ShowDemoWindow();
-
+    frameTime = (newtime - oldtime);
+    set_up_imgui_info(frameTime, oldtime);
     draw();
   }
 }
@@ -996,10 +996,12 @@ void VulkanEngine::init_scene() {
   monkey.material = get_material("defaultmesh");
   monkey.transformMatrix = glm::mat4{1.0f};
 
+  _numTriangles += monkey.mesh->_nbTri;
+
   _renderables.push_back(monkey);
 
-  for (int x = -20; x <= 20; ++x) {
-    for (int y = -20; y <= 20; ++y) {
+  for (int x = -5; x <= 5; ++x) {
+    for (int y = -5; y <= 5; ++y) {
       if (x == 0 && y == 0)
         continue;
       RenderObject tri;
@@ -1011,8 +1013,10 @@ void VulkanEngine::init_scene() {
       tri.transformMatrix = translation * scale;
 
       _renderables.push_back(tri);
+      _numTriangles += tri.mesh->_nbTri;
     }
   }
+  _numObj = _renderables.size();
 }
 
 FrameData &VulkanEngine::get_current_frame() {
@@ -1270,3 +1274,23 @@ void VulkanEngine::init_imgui()
 		});
 }
 
+
+inline void VulkanEngine::set_up_imgui_info(unsigned frameTime, unsigned lastTime)
+{
+    //imgui new frame
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame(_window);
+
+    ImGui::NewFrame();
+
+    //imgui commands
+    ImGui::Begin("Viewer");
+
+    ImGui::Text("Objects: %zu", _numObj);
+    ImGui::Text("Triangles: %zu", _numTriangles);
+    ImGui::Text("Frame Time: %u ms", frameTime);
+    ImGui::Text("FPS: %f", 1000.0/frameTime);
+
+
+    ImGui::End();
+}
