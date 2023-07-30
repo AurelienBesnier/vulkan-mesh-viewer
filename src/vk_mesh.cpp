@@ -28,8 +28,10 @@ bool Mesh::load_from_obj(const char* filename)
 		return false;
 	}
 
+
 	// Loop over shapes
 	for (size_t s = 0; s < shapes.size(); ++s) {
+		_nbObj++;
 		// Loop over faces(polygon)
 		size_t index_offset = 0;
 		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f) {
@@ -68,6 +70,7 @@ bool Mesh::load_from_obj(const char* filename)
 			index_offset += fv;
 		}
 	}
+
 
     return true;
 }

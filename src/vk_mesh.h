@@ -22,7 +22,8 @@ struct Vertex {
 
 struct Mesh {
 	std::vector<Vertex> _vertices;
-	unsigned int _nbTri;
+	unsigned _nbTri = 0;
+	unsigned _nbObj = 0;
 
 	AllocatedBuffer _vertexBuffer;
     bool load_from_obj(const char* filename);
