@@ -907,9 +907,8 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
                                 int count) {
   // make a model view matrix for rendering the object
   // camera view
-  glm::vec3 camPos = {cam.x, cam.y, cam.z};
-
-  glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+  const glm::vec3 &camPos = cam.pos;
+  glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.up);
   // camera projection
   glm::mat4 projection =
       glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.05f, 200.0f);
@@ -950,7 +949,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
   GPUObjectData *objectSSBO = (GPUObjectData *)objectData;
 
   for (unsigned i = 0; i < count; ++i) {
-    RenderObject &object = first[i];
+    const RenderObject &object = first[i];
     objectSSBO[i].modelMatrix = object.transformMatrix;
   }
 
@@ -960,7 +959,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
   Material *lastMaterial = nullptr;
 
   for (unsigned i = 0; i < count; ++i) {
-    RenderObject &object = first[i];
+    const RenderObject &object = first[i];
 
     // only bind the pipeline if it doesnt match with the already bound one
     if (object.material != lastMaterial) {

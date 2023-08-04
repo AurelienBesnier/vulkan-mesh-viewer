@@ -6,8 +6,8 @@
 #include <glm/glm.hpp>
 #include <unordered_map>
 #include <vector>
-#include <vk_mesh.h>
 #include <vk_camera.h>
+#include <vk_mesh.h>
 #include <vk_types.h>
 
 struct UploadContext {
@@ -98,7 +98,7 @@ struct DeletionQueue {
 };
 
 // number of frames to overlap when rendering
-constexpr unsigned int FRAME_OVERLAP = 2;
+constexpr unsigned int FRAME_OVERLAP = 1;
 
 class VulkanEngine {
 
