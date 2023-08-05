@@ -10,6 +10,11 @@
 #include <vk_mesh.h>
 #include <vk_types.h>
 
+struct Texture {
+  AllocatedImage image;
+  VkImageView imageView;
+};
+
 struct UploadContext {
   VkFence _uploadFence;
   VkCommandPool _commandPool;
@@ -49,6 +54,8 @@ struct FrameData {
 };
 
 struct Material {
+
+  VkDescriptorSet textureSet{VK_NULL_HANDLE}; // texture defaulted to null
   VkPipeline pipeline;
   VkPipelineLayout pipelineLayout;
 };
@@ -148,6 +155,7 @@ public:
 
   VkDescriptorSetLayout _globalSetLayout;
   VkDescriptorSetLayout _objectSetLayout;
+  VkDescriptorSetLayout _singleTextureSetLayout;
 
   GPUSceneData _sceneParameters;
   AllocatedBuffer _sceneParameterBuffer;
@@ -197,6 +205,9 @@ public:
   UploadContext _uploadContext;
   void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
+  std::unordered_map<std::string, Texture> _loadedTextures;
+
+
 private:
   Camera cam;
   bool wireframe = false;
@@ -214,6 +225,7 @@ private:
   void init_imgui();
   inline void set_up_imgui_info(unsigned frameTime, unsigned lastTime);
   void load_meshes();
+  void load_images();
   bool load_shader_module(const char *filePath,
                           VkShaderModule *outShaderModule);
   void upload_mesh(Mesh &mesh);

@@ -7,7 +7,7 @@
 class Camera {
 public:
   // camera position
-  glm::vec3 pos{0.f, -5.0f, -1.5f};
+  glm::vec3 pos{0.f, 5.0f, -1.5f};
   glm::vec3 front{0.0f, 0.0f, -1.0f};
   glm::vec3 up{0.0f, 1.0f, 0.0f};
 
@@ -71,16 +71,14 @@ public:
         break;
       }
     } else if (e->type == SDL_MOUSEBUTTONDOWN) {
-      if (e->button.button == SDL_BUTTON_LEFT) {
+      if (e->button.button == SDL_BUTTON_RIGHT) {
         mousemovement = true;
         SDL_CaptureMouse(SDL_TRUE);
-        SDL_SetRelativeMouseMode(SDL_TRUE);
       }
     } else if (e->type == SDL_MOUSEBUTTONUP) {
-      if (e->button.button == SDL_BUTTON_LEFT) {
+      if (e->button.button == SDL_BUTTON_RIGHT) {
         mousemovement = false;
         SDL_CaptureMouse(SDL_FALSE);
-        SDL_SetRelativeMouseMode(SDL_FALSE);
         firstMouse = true;
       }
     } else if (e->type == SDL_MOUSEMOTION) {

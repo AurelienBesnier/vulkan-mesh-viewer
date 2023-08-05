@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 include(FetchContent)
 project(vulkanmeshviewer)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(OpenMP)
@@ -37,9 +37,10 @@ set(IMGUI_SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_vulkan.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_sdl2.cpp"
 )
+add_compile_options(-O3 -ftree-vectorize -march=native -floop-parallelize-all -ftree-parallelize-loops=4)
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES} ${IMGUI_SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_include_directories(${PROJECT_NAME} PUBLIC src)
 FetchContent_MakeAvailable(fetch_vk_bootstrap)
 target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX  vk-bootstrap::vk-bootstrap tinyobjloader stb_image ${SDL2_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
