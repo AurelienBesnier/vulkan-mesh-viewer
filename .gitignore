@@ -45,4 +45,5 @@ _deps
 
 *.kdev4
 build/**
+externs/nativefiledialog/build/**
 .cache/**
