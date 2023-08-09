@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <glm/gtx/transform.hpp>
+#include <nfd.h>
 
 #define VMA_IMPLEMENTATION
 #include "../imgui/backends/imgui_impl_sdl2.h"
@@ -248,7 +249,7 @@ void VulkanEngine::init_vulkan() {
   auto inst_ret = builder.set_app_name("Vulkan Mesh Viewer")
                       .request_validation_layers(bUseValidationLayers)
                       .use_default_debug_messenger()
-                      .require_api_version(1, 1, 0)
+                      .require_api_version(1, 3, 0)
                       .build();
 
   vkb::Instance vkb_inst = inst_ret.value();
@@ -833,8 +834,8 @@ void VulkanEngine::load_images() {
   vkCreateImageView(_device, &imageinfo, nullptr, &lostEmpire.imageView);
 
   _mainDeletionQueue.push_function([=, this]() {
-		vkDestroyImageView(_device, lostEmpire.imageView, nullptr);
-	});
+    vkDestroyImageView(_device, lostEmpire.imageView, nullptr);
+  });
 
   _loadedTextures["texturedmesh"] = lostEmpire;
 }
@@ -1101,70 +1102,68 @@ FrameData &VulkanEngine::get_current_frame() {
   return _frames[_frameNumber % FRAME_OVERLAP];
 }
 
+AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize,
+                                            VkBufferUsageFlags usage,
+                                            VmaMemoryUsage memoryUsage) {
+  // allocate vertex buffer
+  VkBufferCreateInfo bufferInfo = {};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.pNext = nullptr;
+  bufferInfo.size = allocSize;
 
-AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
-{
-	//allocate vertex buffer
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.pNext = nullptr;
-	bufferInfo.size = allocSize;
+  bufferInfo.usage = usage;
 
-	bufferInfo.usage = usage;
+  // let the VMA library know that this data should be writeable by CPU, but
+  // also readable by GPU
+  VmaAllocationCreateInfo vmaallocInfo = {};
+  vmaallocInfo.usage = memoryUsage;
 
+  AllocatedBuffer newBuffer;
 
-	//let the VMA library know that this data should be writeable by CPU, but also readable by GPU
-	VmaAllocationCreateInfo vmaallocInfo = {};
-	vmaallocInfo.usage = memoryUsage;
+  // allocate the buffer
+  VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+                           &newBuffer._buffer, &newBuffer._allocation,
+                           nullptr));
 
-	AllocatedBuffer newBuffer;
-
-	//allocate the buffer
-	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
-		&newBuffer._buffer,
-		&newBuffer._allocation,
-		nullptr));
-
-	return newBuffer;
+  return newBuffer;
 }
 
-size_t VulkanEngine::pad_uniform_buffer_size(size_t originalSize)
-{
-	// Calculate required alignment based on minimum device offset alignment
-	size_t minUboAlignment = _gpuProperties.limits.minUniformBufferOffsetAlignment;
-	size_t alignedSize = originalSize;
-	if (minUboAlignment > 0) {
-		alignedSize = (alignedSize + minUboAlignment - 1) & ~(minUboAlignment - 1);
-	}
-	return alignedSize;
+size_t VulkanEngine::pad_uniform_buffer_size(size_t originalSize) {
+  // Calculate required alignment based on minimum device offset alignment
+  size_t minUboAlignment =
+      _gpuProperties.limits.minUniformBufferOffsetAlignment;
+  size_t alignedSize = originalSize;
+  if (minUboAlignment > 0) {
+    alignedSize = (alignedSize + minUboAlignment - 1) & ~(minUboAlignment - 1);
+  }
+  return alignedSize;
 }
 
+void VulkanEngine::immediate_submit(
+    std::function<void(VkCommandBuffer cmd)> &&function) {
+  VkCommandBuffer cmd = _uploadContext._commandBuffer;
+  // begin the command buffer recording. We will use this command buffer exactly
+  // once, so we want to let vulkan know that
+  VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
-{
-	VkCommandBuffer cmd =_uploadContext._commandBuffer;
-	//begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
-	VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-	VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+  function(cmd);
 
+  VK_CHECK(vkEndCommandBuffer(cmd));
 
-	function(cmd);
+  VkSubmitInfo submit = vkinit::submit_info(&cmd);
 
+  // submit command buffer to the queue and execute it.
+  //  _renderFence will now block until the graphic commands finish execution
+  VK_CHECK(
+      vkQueueSubmit(_graphicsQueue, 1, &submit, _uploadContext._uploadFence));
 
-	VK_CHECK(vkEndCommandBuffer(cmd));
+  vkWaitForFences(_device, 1, &_uploadContext._uploadFence, true, 9999999999);
+  vkResetFences(_device, 1, &_uploadContext._uploadFence);
 
-	VkSubmitInfo submit = vkinit::submit_info(&cmd);
-
-
-	//submit command buffer to the queue and execute it.
-	// _renderFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, _uploadContext._uploadFence));
-
-	vkWaitForFences(_device, 1, &_uploadContext._uploadFence, true, 9999999999);
-	vkResetFences(_device, 1, &_uploadContext._uploadFence);
-
-	vkResetCommandPool(_device, _uploadContext._commandPool, 0);
+  vkResetCommandPool(_device, _uploadContext._commandPool, 0);
 }
 
 void VulkanEngine::init_descriptors() {
@@ -1395,6 +1394,29 @@ inline void VulkanEngine::set_up_imgui_info(unsigned frameTime,
   ImGui::Text("Triangles: %zu", _numTriangles);
   ImGui::Text("Frame Time: %u ms", frameTime);
   ImGui::Text("FPS: %f", 1000.0 / frameTime);
-  ImGui::Button("Load Mesh");
+  if (ImGui::Button("Load Mesh")) {
+    nfdchar_t *outPath = NULL;
+    nfdresult_t result = NFD_OpenDialog("obj", NULL, &outPath);
+
+    if (result == NFD_OKAY) {
+      puts("Success!");
+      _renderables.clear();
+      _numObj = _numTriangles = 0;
+      puts(outPath);
+
+      Mesh mainObj{};
+      mainObj.load_from_obj(outPath);
+
+      upload_mesh(mainObj);
+
+      _meshes["mainObj"] = mainObj;
+      init_scene();
+      free(outPath);
+    } else if (result == NFD_CANCEL) {
+      puts("User pressed cancel.");
+    } else {
+      printf("Error: %s\n", NFD_GetError());
+    }
+  }
   ImGui::End();
 }

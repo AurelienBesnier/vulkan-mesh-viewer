@@ -19,7 +19,8 @@ echo "Done!"
 # Build the application
 echo "Building application..."
 cmake -S ./ -B ./build
-cmake --build ./build --target all -- -j
+cmake --build ./build --target all -- -j 12
 echo "Done!"
 
+# Run
 ./build/vulkanmeshviewer
